@@ -538,6 +538,12 @@
 
 .table-scroll { overflow-x: auto; }
 
+.records-empty {
+    padding: 2.5rem 1.6rem;
+    color: #8994a5;
+    text-align: center;
+}
+
 .records-table {
     width: 100%;
     min-width: 900px;
@@ -567,6 +573,13 @@
 .records-table tbody tr:hover { background: #fdfefe; }
 .records-table th:last-child,
 .records-table td:last-child { width: 54px; padding-left: 0.6rem; padding-right: 0.8rem; }
+
+.records-table-generic th:last-child,
+.records-table-generic td:last-child {
+    width: auto;
+    padding-left: 1.6rem;
+    padding-right: 1.6rem;
+}
 
 .person-cell {
     display: flex;
