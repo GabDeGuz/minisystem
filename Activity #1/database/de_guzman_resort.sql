@@ -8,14 +8,14 @@ CREATE DATABASE IF NOT EXISTS de_guzman_resort
 USE de_guzman_resort;
 
 -- Local application account used by config/database.php.
--- This account can only connect locally and read this project's database.
+-- This account can only connect locally and read or add project records.
 CREATE USER IF NOT EXISTS 'resort_app'@'localhost'
     IDENTIFIED BY 'ResortLocal2026!';
 
 ALTER USER 'resort_app'@'localhost'
     IDENTIFIED BY 'ResortLocal2026!';
 
-GRANT SELECT ON de_guzman_resort.* TO 'resort_app'@'localhost';
+GRANT SELECT, INSERT ON de_guzman_resort.* TO 'resort_app'@'localhost';
 
 CREATE TABLE IF NOT EXISTS staff (
     employee_id VARCHAR(20) PRIMARY KEY,
