@@ -12,6 +12,7 @@ $page_description = 'Curate the experiences available to every resort guest.';
 $active_page = 'services';
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../core/save-data.php';
 require_once __DIR__ . '/includes/record-renderer.php';
 
 if (!isset($_SESSION['csrf_token'])) {
@@ -27,7 +28,7 @@ $formData = [
     'status' => 'Available',
 ];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_service') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'add_service') {
     $submittedToken = (string) ($_POST['csrf_token'] ?? '');
 
     foreach (array_keys($formData) as $field) {
@@ -36,74 +37,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_s
 
     if (!hash_equals($_SESSION['csrf_token'], $submittedToken)) {
         $formErrors[] = 'Your session expired. Please refresh the page and try again.';
-    }
+    } else {
+        $saveError = saveService($pdo, $formData, $_FILES['image'] ?? []);
 
-    if ($formData['service_name'] === '' || strlen($formData['service_name']) > 100) {
-        $formErrors[] = 'Service name is required and must not exceed 100 characters.';
-    }
-
-    if ($formData['category'] === '' || strlen($formData['category']) > 100) {
-        $formErrors[] = 'Category is required and must not exceed 100 characters.';
-    }
-
-    if ($formData['duration'] === '' || strlen($formData['duration']) > 50) {
-        $formErrors[] = 'Duration is required and must not exceed 50 characters.';
-    }
-
-    $price = filter_var($formData['price'], FILTER_VALIDATE_FLOAT);
-    if ($price === false || $price <= 0 || $price > 99999999.99) {
-        $formErrors[] = 'Enter a valid price greater than zero.';
-    }
-
-    $allowedStatuses = ['Available', 'Limited', 'Unavailable'];
-    if (!in_array($formData['status'], $allowedStatuses, true)) {
-        $formErrors[] = 'Select a valid service status.';
-    }
-
-    if ($formErrors === []) {
-        try {
-            $pdo->beginTransaction();
-
-            $lastServiceId = $pdo->query(
-                'SELECT service_id
-                 FROM services
-                 ORDER BY service_id DESC
-                 LIMIT 1
-                 FOR UPDATE'
-            )->fetchColumn();
-
-            $lastSequence = $lastServiceId === false
-                ? 3000
-                : (int) substr((string) $lastServiceId, 4);
-            $serviceId = sprintf('SER-%04d', $lastSequence + 1);
-
-            $insertService = $pdo->prepare(
-                'INSERT INTO services
-                    (service_id, service_name, category, duration, price, status)
-                 VALUES
-                    (:service_id, :service_name, :category, :duration, :price, :status)'
-            );
-            $insertService->execute([
-                'service_id' => $serviceId,
-                'service_name' => $formData['service_name'],
-                'category' => $formData['category'],
-                'duration' => $formData['duration'],
-                'price' => $price,
-                'status' => $formData['status'],
-            ]);
-
-            $pdo->commit();
+        if ($saveError === null) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
             header('Location: services.php?added=1');
             exit;
-        } catch (PDOException $exception) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-
-            error_log($exception->getMessage());
-            $formErrors[] = 'The service could not be saved. Check the database permissions and try again.';
         }
+
+        $formErrors[] = $saveError;
     }
 }
 
@@ -186,7 +129,7 @@ include __DIR__ . '/includes/admin-head.php';
         </div>
     <?php endif; ?>
 
-    <form method="post" class="admin-form">
+    <form method="post" enctype="multipart/form-data" class="admin-form">
         <input type="hidden" name="action" value="add_service">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
 
@@ -220,6 +163,17 @@ include __DIR__ . '/includes/admin-head.php';
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </label>
+
+            <label class="form-field form-field-wide">
+                <span>Service Image</span>
+                <input
+                    type="file"
+                    name="image"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    required
+                >
+                <small class="form-help">JPG, PNG, or WebP only. Maximum file size: 5 MB.</small>
             </label>
         </div>
 

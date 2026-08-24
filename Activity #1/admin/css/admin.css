@@ -504,6 +504,16 @@
     box-shadow: 0 0 0 3px rgba(197, 168, 128, 0.14);
 }
 
+.form-field input[type="file"] {
+    padding: 0.48rem 0.6rem;
+}
+
+.form-help {
+    color: #8994a5;
+    font-size: 0.64rem;
+    line-height: 1.45;
+}
+
 .dialog-actions {
     display: flex;
     justify-content: flex-end;
