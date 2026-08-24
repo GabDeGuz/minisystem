@@ -64,6 +64,8 @@ $customerColumns = [
     'status' => 'Status',
 ];
 
+$customerColumnTypes = [];
+
 $customerRecords = $pdo->query(
     'SELECT customer_id, name, email, phone, last_stay, guest_type, status
      FROM customers
@@ -204,7 +206,10 @@ include __DIR__ . '/includes/admin-head.php';
     </article>
 </section>
 
-<?php renderRecords('Customer', $customerColumns, $customerRecords); ?>
+<?php
+// Reusable record renderer: Customer data uses the same shared function.
+renderRecords('Customer', $customerColumns, $customerRecords, $customerColumnTypes);
+?>
 
 <script>
     const customerDialog = document.getElementById('customer-dialog');

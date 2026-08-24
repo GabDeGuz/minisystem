@@ -51,12 +51,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '')
 }
 
 $serviceColumns = [
+    'image' => 'Image',
     'service_id' => 'Service ID',
     'service_name' => 'Service Name',
     'category' => 'Category',
     'duration' => 'Duration',
     'price' => 'Price',
     'status' => 'Status',
+];
+
+$serviceColumnTypes = [
+    'image' => 'image',
 ];
 
 $serviceRecords = $pdo->query(
@@ -70,6 +75,24 @@ $serviceRecords = $pdo->query(
      FROM services
      ORDER BY service_id"
 )->fetchAll();
+
+$serviceImageDirectory = dirname(__DIR__) . '/images';
+$allowedImageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+foreach ($serviceRecords as &$serviceRecord) {
+    $imageBaseName = 'service_' . strtolower((string) $serviceRecord['service_id']);
+    $serviceRecord['image'] = '';
+
+    foreach ($allowedImageExtensions as $extension) {
+        $imageFileName = $imageBaseName . '.' . $extension;
+
+        if (is_file($serviceImageDirectory . '/' . $imageFileName)) {
+            $serviceRecord['image'] = '../images/' . rawurlencode($imageFileName);
+            break;
+        }
+    }
+}
+unset($serviceRecord);
 
 $serviceSummary = $pdo->query(
     "SELECT
@@ -205,7 +228,10 @@ include __DIR__ . '/includes/admin-head.php';
     </article>
 </section>
 
-<?php renderRecords('Service', $serviceColumns, $serviceRecords); ?>
+<?php
+// Reusable record renderer: Service data with image support.
+renderRecords('Service', $serviceColumns, $serviceRecords, $serviceColumnTypes);
+?>
 
 <script>
     const serviceDialog = document.getElementById('service-dialog');

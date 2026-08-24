@@ -64,6 +64,8 @@ $staffColumns = [
     'status' => 'Status',
 ];
 
+$staffColumnTypes = [];
+
 $staffRecords = $pdo->query(
     'SELECT employee_id, name, position, department, email, phone, status
      FROM staff
@@ -198,7 +200,10 @@ include __DIR__ . '/includes/admin-head.php';
     </article>
 </section>
 
-<?php renderRecords('Staff', $staffColumns, $staffRecords); ?>
+<?php
+// Reusable record renderer: Staff data uses the same shared function.
+renderRecords('Staff', $staffColumns, $staffRecords, $staffColumnTypes);
+?>
 
 <script>
     const staffDialog = document.getElementById('staff-dialog');

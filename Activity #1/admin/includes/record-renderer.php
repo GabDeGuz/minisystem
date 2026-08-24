@@ -8,8 +8,14 @@ declare(strict_types=1);
  * @param string                           $entityName Singular entity name.
  * @param array<string, string>            $columns    Record key => table heading.
  * @param array<int, array<string, mixed>> $records    Associative record rows.
+ * @param array<string, string>            $columnTypes Optional record key => display type.
  */
-function renderRecords(string $entityName, array $columns, array $records): void
+function renderRecords(
+    string $entityName,
+    array $columns,
+    array $records,
+    array $columnTypes = []
+): void
 {
     $recordCount = count($records);
     ?>
@@ -43,7 +49,30 @@ function renderRecords(string $entityName, array $columns, array $records): void
                                     <td>
                                         <?php
                                         $value = $record[$key] ?? '';
-                                        echo htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+
+                                        if (($columnTypes[$key] ?? 'text') === 'image') {
+                                            if ($value !== '') {
+                                                $imageAlt = $record['service_name']
+                                                    ?? $record['name']
+                                                    ?? $entityName;
+                                                ?>
+                                                <img
+                                                    class="record-image"
+                                                    src="<?php echo htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); ?>"
+                                                    alt="<?php echo htmlspecialchars((string) $imageAlt, ENT_QUOTES, 'UTF-8'); ?>"
+                                                    loading="lazy"
+                                                >
+                                                <?php
+                                            } else {
+                                                ?>
+                                                <span class="record-image-placeholder" aria-label="No image">
+                                                    <i class="fa-regular fa-image"></i>
+                                                </span>
+                                                <?php
+                                            }
+                                        } else {
+                                            echo htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+                                        }
                                         ?>
                                     </td>
                                 <?php endforeach; ?>
