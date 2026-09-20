@@ -828,6 +828,18 @@
     font-size: 0.74rem;
 }
 
+.record-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.row-action-danger:hover {
+    color: #b24e4e;
+    border-color: rgba(178, 78, 78, 0.35);
+    background: #fff8f8;
+}
+
 .table-footer {
     display: flex;
     align-items: center;

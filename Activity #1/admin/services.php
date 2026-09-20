@@ -11,9 +11,7 @@ $page_heading = 'Services';
 $page_description = 'Curate the experiences available to every resort guest.';
 $active_page = 'services';
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../core/save-data.php';
-require_once __DIR__ . '/includes/record-renderer.php';
+require_once __DIR__ . '/../Model/DB_Model.php';
 
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -38,20 +36,33 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '')
     if (!hash_equals($_SESSION['csrf_token'], $submittedToken)) {
         $formErrors[] = 'Your session expired. Please refresh the page and try again.';
     } else {
-        $saveError = saveService($pdo, $formData, $_FILES['image'] ?? []);
+        $saveError = validate_form('service', $formData);
 
         if ($saveError === null) {
+            $serviceId = next_record_id('services', 'service_id', 'SER-', 3000);
+            $serviceName = mysqli_real_escape_string($connection, $formData['service_name']);
+            $category = mysqli_real_escape_string($connection, $formData['category']);
+            $duration = mysqli_real_escape_string($connection, $formData['duration']);
+            $price = (float) $formData['price'];
+            $status = mysqli_real_escape_string($connection, $formData['status']);
+
+            $newService = "INSERT INTO services
+                (service_id, service_name, category, duration, price, status)
+                VALUES ('$serviceId', '$serviceName', '$category', '$duration', $price, '$status')";
+            $GLOBALS['uploadFileName'] = 'service_' . strtolower($serviceId) . '.jpg';
+
+            save($newService);
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-            header('Location: services.php?added=1');
-            exit;
+            redirect_to('services.php?added=1');
         }
 
-        $formErrors[] = $saveError;
+        if ($saveError !== null) {
+            $formErrors[] = $saveError;
+        }
     }
 }
 
 $serviceColumns = [
-    'image' => 'Image',
     'service_id' => 'Service ID',
     'service_name' => 'Service Name',
     'category' => 'Category',
@@ -60,11 +71,7 @@ $serviceColumns = [
     'status' => 'Status',
 ];
 
-$serviceColumnTypes = [
-    'image' => 'image',
-];
-
-$serviceRecords = $pdo->query(
+$serviceSql =
     "SELECT
         service_id,
         service_name,
@@ -73,35 +80,16 @@ $serviceRecords = $pdo->query(
         CONCAT('PHP ', FORMAT(price, 2)) AS price,
         status
      FROM services
-     ORDER BY service_id"
-)->fetchAll();
+     ORDER BY service_id";
 
-$serviceImageDirectory = dirname(__DIR__) . '/images';
-$allowedImageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-
-foreach ($serviceRecords as &$serviceRecord) {
-    $imageBaseName = 'service_' . strtolower((string) $serviceRecord['service_id']);
-    $serviceRecord['image'] = '';
-
-    foreach ($allowedImageExtensions as $extension) {
-        $imageFileName = $imageBaseName . '.' . $extension;
-
-        if (is_file($serviceImageDirectory . '/' . $imageFileName)) {
-            $serviceRecord['image'] = '../images/' . rawurlencode($imageFileName);
-            break;
-        }
-    }
-}
-unset($serviceRecord);
-
-$serviceSummary = $pdo->query(
+$serviceSummary = fetch_record_summary(
     "SELECT
         COUNT(*) AS total_services,
         COUNT(DISTINCT category) AS category_count,
         SUM(status = 'Available') AS available_services,
         SUM(status = 'Limited') AS limited_services
      FROM services"
-)->fetch();
+);
 
 $totalServices = (int) $serviceSummary['total_services'];
 $categoryCount = (int) $serviceSummary['category_count'];
@@ -192,7 +180,8 @@ include __DIR__ . '/includes/admin-head.php';
                 <span>Service Image</span>
                 <input
                     type="file"
-                    name="image"
+                    name="fileField"
+                    id="fileField"
                     accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                     required
                 >
@@ -229,8 +218,7 @@ include __DIR__ . '/includes/admin-head.php';
 </section>
 
 <?php
-// Reusable record renderer: Service data with image support.
-renderRecords('Service', $serviceColumns, $serviceRecords, $serviceColumnTypes);
+display_all($serviceSql, $serviceColumns, 'services.php');
 ?>
 
 <script>

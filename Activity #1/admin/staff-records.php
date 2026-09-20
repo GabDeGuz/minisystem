@@ -14,9 +14,7 @@ $page_heading = 'Staff Records';
 $page_description = 'View and organize your resort team in one place.';
 $active_page = 'staff';
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../core/save-data.php';
-require_once __DIR__ . '/includes/record-renderer.php';
+require_once __DIR__ . '/../Model/DB_Model.php';
 
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -42,15 +40,29 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '')
     if (!hash_equals($_SESSION['csrf_token'], $submittedToken)) {
         $formErrors[] = 'Your session expired. Please refresh the page and try again.';
     } else {
-        $saveError = saveStaff($pdo, $formData);
+        $saveError = validate_form('staff', $formData);
 
         if ($saveError === null) {
+            $employeeId = next_record_id('staff', 'employee_id', 'DGR-', 1000);
+            $name = mysqli_real_escape_string($connection, $formData['name']);
+            $position = mysqli_real_escape_string($connection, $formData['position']);
+            $department = mysqli_real_escape_string($connection, $formData['department']);
+            $email = mysqli_real_escape_string($connection, $formData['email']);
+            $phone = mysqli_real_escape_string($connection, $formData['phone']);
+            $status = mysqli_real_escape_string($connection, $formData['status']);
+
+            $newStaff = "INSERT INTO staff
+                (employee_id, name, position, department, email, phone, status)
+                VALUES ('$employeeId', '$name', '$position', '$department', '$email', '$phone', '$status')";
+
+            save($newStaff);
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-            header('Location: staff-records.php?added=1');
-            exit;
+            redirect_to('staff-records.php?added=1');
         }
 
-        $formErrors[] = $saveError;
+        if ($saveError !== null) {
+            $formErrors[] = $saveError;
+        }
     }
 }
 
@@ -64,22 +76,19 @@ $staffColumns = [
     'status' => 'Status',
 ];
 
-$staffColumnTypes = [];
-
-$staffRecords = $pdo->query(
+$staffSql =
     'SELECT employee_id, name, position, department, email, phone, status
      FROM staff
-     ORDER BY employee_id'
-)->fetchAll();
+     ORDER BY employee_id';
 
-$staffSummary = $pdo->query(
+$staffSummary = fetch_record_summary(
     "SELECT
         COUNT(*) AS total_staff,
         SUM(status = 'On Duty') AS on_duty_staff,
         COUNT(DISTINCT department) AS department_count,
         SUM(status = 'On Leave') AS on_leave_staff
      FROM staff"
-)->fetch();
+);
 
 $totalStaff = (int) $staffSummary['total_staff'];
 $onDutyStaff = (int) $staffSummary['on_duty_staff'];
@@ -201,8 +210,7 @@ include __DIR__ . '/includes/admin-head.php';
 </section>
 
 <?php
-// Reusable record renderer: Staff data uses the same shared function.
-renderRecords('Staff', $staffColumns, $staffRecords, $staffColumnTypes);
+display_all($staffSql, $staffColumns, 'staff-records.php');
 ?>
 
 <script>

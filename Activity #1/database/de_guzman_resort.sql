@@ -7,7 +7,7 @@ CREATE DATABASE IF NOT EXISTS de_guzman_resort
 
 USE de_guzman_resort;
 
--- Local application account used by config/database.php.
+-- Local application account used by Model/DB_Model.php.
 -- This account can only connect locally and read or add project records.
 CREATE USER IF NOT EXISTS 'resort_app'@'localhost'
     IDENTIFIED BY 'ResortLocal2026!';

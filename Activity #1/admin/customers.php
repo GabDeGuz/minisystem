@@ -14,9 +14,7 @@ $page_heading = 'Customers';
 $page_description = 'Build stronger relationships with every resort guest.';
 $active_page = 'customers';
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../core/save-data.php';
-require_once __DIR__ . '/includes/record-renderer.php';
+require_once __DIR__ . '/../Model/DB_Model.php';
 
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -42,15 +40,30 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '')
     if (!hash_equals($_SESSION['csrf_token'], $submittedToken)) {
         $formErrors[] = 'Your session expired. Please refresh the page and try again.';
     } else {
-        $saveError = saveCustomer($pdo, $formData);
+        $saveError = validate_form('customer', $formData);
 
         if ($saveError === null) {
+            $customerId = next_record_id('customers', 'customer_id', 'CUS-', 2000);
+            $name = mysqli_real_escape_string($connection, $formData['name']);
+            $email = mysqli_real_escape_string($connection, $formData['email']);
+            $phone = mysqli_real_escape_string($connection, $formData['phone']);
+            $lastStay = mysqli_real_escape_string($connection, $formData['last_stay']);
+            $guestType = mysqli_real_escape_string($connection, $formData['guest_type']);
+            $status = mysqli_real_escape_string($connection, $formData['status']);
+
+            $newCustomer = "INSERT INTO customers
+                (customer_id, name, email, phone, last_stay, guest_type, status)
+                VALUES ('$customerId', '$name', '$email', '$phone', '$lastStay', '$guestType', '$status')";
+            $GLOBALS['uploadFileName'] = 'customer_' . strtolower($customerId) . '.jpg';
+
+            save($newCustomer);
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-            header('Location: customers.php?added=1');
-            exit;
+            redirect_to('customers.php?added=1');
         }
 
-        $formErrors[] = $saveError;
+        if ($saveError !== null) {
+            $formErrors[] = $saveError;
+        }
     }
 }
 
@@ -64,22 +77,19 @@ $customerColumns = [
     'status' => 'Status',
 ];
 
-$customerColumnTypes = [];
-
-$customerRecords = $pdo->query(
+$customerSql =
     'SELECT customer_id, name, email, phone, last_stay, guest_type, status
      FROM customers
-     ORDER BY customer_id'
-)->fetchAll();
+     ORDER BY customer_id';
 
-$customerSummary = $pdo->query(
+$customerSummary = fetch_record_summary(
     "SELECT
         COUNT(*) AS total_customers,
         SUM(status = 'Active') AS active_customers,
         SUM(guest_type = 'New Guest') AS new_customers,
         SUM(guest_type = 'Loyalty Member') AS loyalty_members
      FROM customers"
-)->fetch();
+);
 
 $totalCustomers = (int) $customerSummary['total_customers'];
 $activeCustomers = (int) $customerSummary['active_customers'];
@@ -130,7 +140,7 @@ include __DIR__ . '/includes/admin-head.php';
         </div>
     <?php endif; ?>
 
-    <form method="post" class="admin-form">
+    <form method="post" enctype="multipart/form-data" class="admin-form">
         <input type="hidden" name="action" value="add_customer">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
 
@@ -176,6 +186,18 @@ include __DIR__ . '/includes/admin-head.php';
                     <?php endforeach; ?>
                 </select>
             </label>
+
+            <label class="form-field form-field-wide">
+                <span>Customer Profile Image</span>
+                <input
+                    type="file"
+                    name="fileField"
+                    id="fileField"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    required
+                >
+                <small class="form-help">JPG, PNG, or WebP only. Maximum file size: 5 MB.</small>
+            </label>
         </div>
 
         <div class="dialog-actions">
@@ -207,8 +229,7 @@ include __DIR__ . '/includes/admin-head.php';
 </section>
 
 <?php
-// Reusable record renderer: Customer data uses the same shared function.
-renderRecords('Customer', $customerColumns, $customerRecords, $customerColumnTypes);
+display_all($customerSql, $customerColumns, 'customers.php');
 ?>
 
 <script>
