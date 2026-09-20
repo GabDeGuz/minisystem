@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 $sessionDirectory = dirname(__DIR__) . '/storage/sessions';
+
+if (!is_dir($sessionDirectory)) {
+    mkdir($sessionDirectory, 0755, true);
+}
+
 session_save_path($sessionDirectory);
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -15,6 +20,7 @@ $page_description = 'View and organize your resort team in one place.';
 $active_page = 'staff';
 
 require_once __DIR__ . '/../Model/DB_Model.php';
+require_once __DIR__ . '/includes/admin-helpers.php';
 
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));

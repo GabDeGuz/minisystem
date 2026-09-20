@@ -3,8 +3,16 @@
 declare(strict_types=1);
 
 $sessionDirectory = dirname(__DIR__) . '/storage/sessions';
+
+if (!is_dir($sessionDirectory)) {
+    mkdir($sessionDirectory, 0755, true);
+}
+
 session_save_path($sessionDirectory);
-session_start();
+
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 
 $page_title = 'Services';
 $page_heading = 'Services';
@@ -12,6 +20,7 @@ $page_description = 'Curate the experiences available to every resort guest.';
 $active_page = 'services';
 
 require_once __DIR__ . '/../Model/DB_Model.php';
+require_once __DIR__ . '/includes/admin-helpers.php';
 
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
