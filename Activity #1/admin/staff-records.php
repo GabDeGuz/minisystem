@@ -60,6 +60,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '')
             $newStaff = "INSERT INTO staff
                 (employee_id, name, position, department, email, phone, status)
                 VALUES ('$employeeId', '$name', '$position', '$department', '$email', '$phone', '$status')";
+            $GLOBALS['uploadFileName'] = 'staff_' . strtolower($employeeId) . '.jpg';
 
             save($newStaff);
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -145,7 +146,7 @@ include __DIR__ . '/includes/admin-head.php';
         </div>
     <?php endif; ?>
 
-    <form method="post" class="admin-form">
+    <form method="post" enctype="multipart/form-data" class="admin-form">
         <input type="hidden" name="action" value="add_staff">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
 
@@ -184,6 +185,18 @@ include __DIR__ . '/includes/admin-head.php';
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </label>
+
+            <label class="form-field form-field-wide">
+                <span>Staff Profile Image</span>
+                <input
+                    type="file"
+                    name="fileField"
+                    id="staff-image"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    required
+                >
+                <small class="form-help">JPG, PNG, or WebP only. Maximum file size: 5 MB.</small>
             </label>
         </div>
 
